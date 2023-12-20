@@ -7,7 +7,7 @@
 
 import SwiftUI
 import DataDetection
-
+import Charts
 
 struct WorkoutHistoryView: View {
     @ObservedObject var viewModel = WorkoutHistoryViewModel()
@@ -25,11 +25,11 @@ struct WorkoutHistoryView: View {
                                 Spacer()
                                 Text(weekRangeOfYear(week:weekOfYear).2)
                             }
-                            
                         }
                         .padding(10)
                         
                         HStack(alignment: .bottom, spacing: 20) {
+                            
                             ForEach(viewModel.bars) { bar in
                                 VStack {
                                     Rectangle()
@@ -49,14 +49,15 @@ struct WorkoutHistoryView: View {
             .tabViewStyle(.page)
         }
     }
+}
     
-    struct WorkoutHistoryEdit_Previews: PreviewProvider {
+    struct WorkoutHistoryView_Previews: PreviewProvider {
         static var previews: some View {
             VStack(spacing: 0) {
                 WorkoutHistoryView()
-                Spacer()
+                
             }
         }
     }
-}
+
 

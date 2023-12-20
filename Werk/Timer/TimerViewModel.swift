@@ -14,7 +14,7 @@ import AudioToolbox
 class TimerViewModel: ObservableObject {
     private var services: DataStorageServiceIdentity
     var soundModel = Audio()
-    var workout: WorkoutBlueprint!
+     var workout: WorkoutBlueprint!
     @Published var circleProgress: CGFloat = 0.0
     @State var startDate = Date.now
     @Published var workoutBlocks: [WorkoutBlock] = []
@@ -52,7 +52,6 @@ class TimerViewModel: ObservableObject {
     
     var displayedPhasename:String { //Current phase name
         "\(currentPhaseName)"
-        
     }
     
     var displayedSetInfo:String {  //Number of sets in workout
@@ -143,6 +142,7 @@ class TimerViewModel: ObservableObject {
     }  // ^-- issue is present here
     
     func didPressExit(){
+        
         //opens a menu that ask the user if they
     }
     
@@ -155,7 +155,7 @@ class TimerViewModel: ObservableObject {
         currentPhaseIndex += 1
         if currentPhaseIndex >= workoutBlocks.count{
             currentPhaseIndex = 0
-            saveTimedWorkout()
+            didPressReset()
             return  // this should save the workout to the workout history and exit the timer
         }
         timerElapsedTime = 0
@@ -172,6 +172,7 @@ class TimerViewModel: ObservableObject {
         }
         timerElapsedTime = 0
         calculateElapsedTime()
+       
     }
     
     
@@ -202,11 +203,38 @@ class TimerViewModel: ObservableObject {
     
     func didSelectSavedWorkout() {
         guard let user = services.getLocalCurrentUser() else { return }
-
-        services.saveRecordedWorkout(recordedWorkout: RecordedWorkout(userId: user.id, name: workout.name, duration: Double(workout.duration), date: Date()))
+        services.saveRecordedWorkoutRemote(recordedWorkout: RecordedWorkout(userId: user.id, name: workout.name, duration: Double(workout.duration), date: Date()))
         
     }
     
+    func updateWorkout(with updatedWorkout: WorkoutBlueprint) {
+          self.workout = updatedWorkout
+        rebuildWorkoutBlocks()
+      }
+    
+
+    private func rebuildWorkoutBlocks() {
+        workoutBlocks.removeAll()
+            var cycleBlocks: [WorkoutBlock] = []
+            for cycle in workout.intervals.cycles {
+                for cycleSet in 0...cycle.numberOfSets {
+                    if cycleSet % 2 != 0 {
+                        cycleBlocks.append(WorkoutBlock(name: cycle.highIntensity.name, timeElapsed: 0, plannedDuration: cycle.highIntensity.duration, type: .highIntensity))
+                    } else {
+                        cycleBlocks.append(WorkoutBlock(name: cycle.lowIntensity.name, timeElapsed: 0, plannedDuration: cycle.lowIntensity.duration, type: .lowIntensity))
+                    }
+                }
+                if let rest = cycle.restPhase {
+                    cycleBlocks.append(WorkoutBlock(name: rest.name, timeElapsed: 0, plannedDuration: rest.duration, type: .restBetweenPhases))
+                }
+            }
+            let warmupBlock = WorkoutBlock(name: workout.warmup.name, timeElapsed: 0, plannedDuration: workout.warmup.duration, type: .warmup)
+            let cooldownBlock = WorkoutBlock(name: workout.cooldown.name, timeElapsed: 0, plannedDuration: workout.cooldown.duration, type: .coolDown)
+            workoutBlocks = [warmupBlock] + cycleBlocks + [cooldownBlock]
+            totalPlannedDuration = workoutBlocks.map { $0.plannedDuration }.reduce(0, +)
+            currentPhaseIndex = 0
+        didPressReset()
+        }
     
     
     private func createTimer() {
@@ -255,7 +283,7 @@ class TimerViewModel: ObservableObject {
     private func saveTimedWorkout() {
         //saves the full duraiton of the workout that is completed
         let dataStorageService = DataStorageService()
-        dataStorageService.saveWorkoutBlueprint(workoutBlueprint: self.workout)
+        dataStorageService.saveWorkoutBlueprintRemote(workoutBlueprint: self.workout)
     }
     
     func changeBackgroundColor(phaseName: String) -> Color {
